@@ -1,0 +1,420 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CodePen - Chess</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+<script src="https://static.codepen.io/assets/common/stopExecutionOnTimeout-de7e2ef6bfefd24b79a3f68b414b87b8db5b08439cac3f1012092b2290c719cd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.5.8/angular.min.js"></script>
+<style>
+      
+body {
+   width: 580px;
+   margin: 10px auto;
+}
+
+/*=====BOARD GAME=================*/
+
+#board {
+    width: 480px;
+    margin: 15px auto 20px auto;
+    background: #ccc;
+    border: 25px solid #fff;
+    border-radius: 10px;
+    box-shadow: inset -1px 1px 7px rgba(0,0,0,.2), 
+                inset 1px -1px 7px rgba(0,0,0,.2), 
+                1px 12px 5px rgba(0,0,0,.4), 
+                4px 3px 8px rgba(0,0,0,.4), 
+                5px 10px 10px rgba(0,0,0,.2), 
+                -5px 10px 10px rgba(0,0,0,.4);
+}
+
+.row {
+    clear: both;
+    overflow: hidden;
+}
+
+.box {
+    width: 60px;
+    height: 60px;
+    float: left;
+    text-align: center;
+    line-height: 60px;
+    font-size: 50px;
+    cursor: default;
+}
+
+.placed {
+    cursor: pointer;
+}
+
+.selected {
+    -moz-box-shadow:    inset 0 0 10px #0000FF;
+    -webkit-box-shadow: inset 0 0 10px #0000FF;
+    box-shadow:         inset 0 0 10px #0000FF;
+}
+
+.suggest {
+    
+    -moz-filter: grayscale(50%);
+    -webkit-filter: grayscale(50%);
+    filter: grayscale(50%);
+    
+    -moz-box-shadow:    inset 0 0 15px #0f0;
+    -webkit-box-shadow: inset 0 0 15px #0f0;
+    box-shadow:         inset 0 0 15px #0f0;	
+    cursor: pointer;
+}
+
+/*============================================*/
+
+#result {
+    width: 480px;
+    height: 480px;
+    line-height: 480px;
+    position: absolute;
+    background: transparent;
+    text-align: center;
+    font-size: 90px;
+    cursor: default;
+    animation: blur 1.5s ease-out infinite;
+    z-index: 10;
+}
+
+.hide {
+    display: none;
+}
+    </style>
+<script>
+  window.console = window.console || function(t) {};
+</script>
+<script>
+  if (document.location.search.match(/type=embed/gi)) {
+    window.parent.postMessage("resize", "*");
+  }
+</script>
+</head>
+<body>
+<div id="board">
+<div id="game" ng-app="myApp" ng-controller="GameController">
+<div class="row" ng-repeat="y in widths">
+<div class="box" ng-repeat="x in widths" ng-attr-id="{{'box-' + x + '-' + y}}" piece="">
+</div>
+</div>
+</div>
+</div>
+
+<script id="rendered-js">
+angular.module('myApp', []).controller('GameController', ['$scope', function ($scope) {
+
+  //Draw the board game
+  $scope.size = 8;
+  $scope.widths = [];
+
+  //Draw board
+  for (var i = 0; i < $scope.size; i++) {if (window.CP.shouldStopExecution(0)) break;
+    $scope.widths.push(i);
+  }window.CP.exitedLoop(0);
+
+}]);
+
+$(document).ready(function () {
+  var themes = [
+  {
+    name: 'CLASSIC',
+    boardBorderColor: '#666',
+    lightBoxColor: '#fff',
+    darkBoxColor: '#ccc',
+    optionColor: '#000',
+    optionHoverColor: '#999' },
+
+  {
+    name: 'CLASSIC2',
+    boardBorderColor: '#FFFFFF',
+    lightBoxColor: '#000000',
+    darkBoxColor: '#FFFFFF',
+    optionColor: '#FFFFFF',
+    optionHoverColor: '#f99' }];
+
+
+
+  var colors = [
+  {
+    name: 'BLACK',
+    color: '#000' },
+
+  {
+    name: 'GREEN',
+    color: '#030' },
+
+  {
+    name: 'BLUE',
+    color: '#036' }];
+
+  var colorOption = 0;
+  var themeOption = 1;
+
+  //Set up theme
+  var setTheme = function () {
+    var theme = themes[themeOption];
+
+    $('#theme-option').html(theme.name);
+
+    $('#board').css('border-color', theme.boardBorderColor);
+    $('.light-box').css('background', theme.lightBoxColor);
+    $('.dark-box').css('background', theme.darkBoxColor);
+
+  };
+
+  //Set up color for chess pieces
+  var setColor = function () {
+    var color = colors[colorOption];
+
+    $('#color-option').html(color.name);
+
+    $('.box').css('color', color['color']);
+
+    $('#pawn-promotion-option').css('color', color['color']);
+
+  };
+
+  //=====GLOBAL VARIABLES=========//
+
+  //Chess pieces
+  var chessPieces = {
+    'white': {
+      'knight': ''},
+
+    'black': {
+      'knight': '&#9822;'} };
+
+  var player = 'black'; //First player
+
+  //Selected chess piece to move
+  var select = {
+    canMove: false, //Ready to move of not
+    piece: '', //Color, type of the piece
+    box: '' //Position of the piece
+
+    //Game's history (pieces + positions)
+  };
+
+  //Set up board game
+  $(function () {
+    $('#player').html(chessPieces.black.king);
+
+    //Set up color for boxes, chess pieces
+    for (var i = 0; i < 8; i++) {if (window.CP.shouldStopExecution(1)) break;
+      for (var j = 0; j < 8; j++) {if (window.CP.shouldStopExecution(2)) break;
+        var box = $('#box-' + i + '-' + j);
+        if ((i + j) % 2 !== 0) {
+          box.addClass('light-box');
+        } else {
+          box.addClass('dark-box');
+        }
+        setNewBoard(box, i, j); //Set up all chess pieces
+      }window.CP.exitedLoop(2);
+    }window.CP.exitedLoop(1);
+    setColor();
+    setTheme();
+  });
+
+  //==============CLICK EVENTS==================//
+
+  $(function () {
+ 
+    //Box click event
+    $('.box').on('click', function () {
+      if ($(this).hasClass('selected')) {//Undo to select new box
+        $(this).removeClass('selected');
+
+        $('.box').removeClass('suggest');
+        select = { canMove: false, piece: '', box: '' };
+        return;
+      }
+
+      //Select new box
+      if (!select.canMove) {
+        //Check the right color to play
+        if ($(this).attr('piece').indexOf(player) >= 0) {
+          //Select a piece to move
+          selectPiece($(this));
+        }
+      }
+
+      //Set up new destination for selected box
+      else if (select.canMove) {
+          var selectedPieceInfo = select.piece.split('-');
+          var color = selectedPieceInfo[0];
+          var type = selectedPieceInfo[1];
+
+          //Select new piece to move if 2 colors are the same
+          if ($(this).attr('piece').indexOf(color) >= 0) {
+            $('#' + select.box).removeClass('selected');
+            $('.box').removeClass('suggest');
+            //Select a piece to move
+            selectPiece($(this));
+            return;
+          }
+
+          //Can move if it is valid
+          if ($(this).hasClass('suggest')) {
+
+            //Save move in history
+            var move = {
+              previous: {},
+              current: {} };
+
+
+            move.previous.piece = select.piece;
+            move.previous.box = select.box;
+
+            move.current.piece = $(this).attr('piece');
+            move.current.box = $(this).attr('id');
+
+            historyMoves.push(move);
+
+            //Move selected piece successfully
+            setPiece($(this), color, type);
+
+            //Delete moved box
+            deleteBox($('#' + select.box));
+
+            $('.box').removeClass('suggest');
+
+            select = { canMove: false, piece: '', box: '' };
+
+            //Switch player
+            switchPlayer();
+          }
+        }
+    });
+  });
+
+  //Get piece and position of the selected piece
+  var selectPiece = function (box) {
+    box.addClass('selected');
+    select.box = box.attr('id');
+    select.piece = box.attr('piece');
+    select.canMove = true;
+
+    suggestNextMoves(getNextMoves(select.piece, select.box));
+  };
+
+  //CALCULATE VALID MOVES=======//
+
+  //Returns possible moves of the selected piece
+  var getNextMoves = function (selectedPiece, selectedBox) {
+    var selectedPieceInfo = selectedPiece.split('-');
+    var color = selectedPieceInfo[0];
+    var type = selectedPieceInfo[1];
+
+    var id = selectedBox.split('-');
+    var i = parseInt(id[1]);
+    var j = parseInt(id[2]);
+
+    var nextMoves = [];
+
+    switch (type) {
+      case 'knight':
+        var moves = [
+        [-1, -2], [-2, -1], [1, -2], [-2, 1],
+        [2, -1], [-1, 2], [2, 1], [1, 2]];
+
+        nextMoves = getKnightMoves(i, j, color, moves);
+      default:
+        break;}
+
+    return nextMoves;
+  };
+
+   //Calculate next moves for knight or king pieces
+  var getKnightMoves = function (i, j, color, moves) {
+    var nextMoves = [];
+    for (var move of moves) {
+      var tI = i + move[0];
+      var tJ = j + move[1];
+      if (!outOfBounds(tI, tJ)) {
+        var box = $('#box-' + tI + '-' + tJ);
+        if (!box.hasClass('placed') || box.attr('piece').indexOf(color) < 0) {
+          nextMoves.push([tI, tJ]);
+        }
+      }
+    }
+    return nextMoves;
+  };
+
+  //Check if position i, j is in the board game
+  var outOfBounds = function (i, j) {
+    return i < 0 || i >= 8 || j < 0 || j >= 8;
+  };
+
+  //Show possible moves by add suggestion to boxes
+  var suggestNextMoves = function (nextMoves) {
+    for (var move of nextMoves) {
+      var box = $('#box-' + move[0] + '-' + move[1]);
+      box.addClass('suggest');
+    }
+  };
+
+  //=============================================//
+
+  //Set up piece for clicked box
+  var setPiece = function (box, color, type) {
+
+    box.html(chessPieces[color][type]);
+    box.addClass('placed');
+    box.attr('piece', color + '-' + type);
+  };
+
+  //Default board state
+  var setNewBoard = function (box, i, j) {
+    if (j === 7) {
+      if (i === 0 || i === 7) {
+        setPiece(box, 'white', 'rook');
+      } else if (i === 1 || i === 6) {
+        setPiece(box, 'white', 'knight');
+      } else if (i === 2 || i === 5) {
+        setPiece(box, 'white', 'bishop');
+      } else if (i === 3) {
+        setPiece(box, 'white', 'queen');
+      } else if (i === 4) {
+        setPiece(box, 'white', 'king');
+      }
+    } else if (j === 6) {
+      setPiece(box, 'white', 'pawn');
+    } else if (j === 1) {
+      setPiece(box, 'black', 'pawn');
+    } else if (j === 0) {
+      if (i === 0 || i === 7) {
+        setPiece(box, 'black', 'rook');
+      } else if (i === 1 || i === 6) {
+        setPiece(box, 'black', 'knight');
+      } else if (i === 2 || i === 5) {
+        setPiece(box, 'black', 'bishop');
+      } else if (i === 3) {
+        setPiece(box, 'black', 'queen');
+      } else if (i === 4) {
+        setPiece(box, 'black', 'king');
+      }
+    }
+  };
+
+  //Switch player
+  var switchPlayer = function () {
+    if (player === 'black') {
+      $('#player').html(chessPieces.white.king);
+      player = 'white';
+    } else {
+      $('#player').html(chessPieces.black.king);
+      player = 'black';
+    }
+  };
+});
+    </script>
+</body>
+</html>
